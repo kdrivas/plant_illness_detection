@@ -1,10 +1,10 @@
 name: plant_illness_detection
 description: A mobile app to detect plant illnesses for lettuce, strawberries, and blueberries.
-publish_to: 'none'
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.2.0 <4.0.0'
+  sdk: ">=3.2.0 <4.0.0"
 
 dependencies:
   flutter:

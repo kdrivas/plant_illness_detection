@@ -60,28 +60,39 @@ final selectedPlantProvider = StateProvider<PlantType>((ref) {
   return PlantType.lettuce;
 });
 
-/// Currently selected sensor block
+/// Currently selected sensor block (matches backend block_A, block_B, etc.)
 final selectedBlockProvider = StateProvider<String>((ref) {
-  return 'Block-A';
+  return 'block_A';
 });
 
-/// Currently selected row within a block
+/// Currently selected row within a block (matches backend row_1, row_2, etc.)
 final selectedRowProvider = StateProvider<String>((ref) {
-  return 'Row-1';
+  return 'row_1';
 });
 
-/// Available rows for the selected plant/block
+/// Cached overview data from API
+final dashboardOverviewProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final service = ref.watch(sensorServiceProvider);
+  return service.getDashboardOverview();
+});
+
+/// Available rows for the selected plant type (from API)
 final availableRowsProvider = Provider<List<String>>((ref) {
-  final plant = ref.watch(selectedPlantProvider);
-  // Each plant type has different row counts
-  switch (plant) {
-    case PlantType.lettuce:
-      return ['Row-1', 'Row-2', 'Row-3', 'Row-4', 'Row-5', 'Row-6', 'Row-7', 'Row-8'];
-    case PlantType.strawberry:
-      return ['Row-1', 'Row-2', 'Row-3', 'Row-4', 'Row-5', 'Row-6'];
-    case PlantType.blueberry:
-      return ['Row-1', 'Row-2', 'Row-3', 'Row-4'];
-  }
+  final overviewAsync = ref.watch(dashboardOverviewProvider);
+  final selectedPlant = ref.watch(selectedPlantProvider);
+  
+  return overviewAsync.when(
+    data: (overview) {
+      final rows = overview['rows'] as List<dynamic>? ?? [];
+      // Filter rows by selected plant type
+      return rows
+          .where((r) => (r['plantType'] ?? r['plant_type']) == selectedPlant.name)
+          .map((r) => (r['rowId'] ?? r['row_id'] ?? 'unknown') as String)
+          .toList();
+    },
+    loading: () => ['row_1'], // Default while loading
+    error: (_, __) => ['row_1'], // Default on error
+  );
 });
 
 /// Chart timeframe selection (1h, 6h, 24h)
@@ -122,9 +133,9 @@ final currentSensorDataProvider = FutureProvider<BlockSensorData?>((ref) async {
 
 /// Sensor history for charts
 final sensorHistoryProvider = FutureProvider.family<List<BlockSensorData>, int>((ref, hours) async {
-  final blockId = ref.watch(selectedBlockProvider);
+  final rowId = ref.watch(selectedBlockProvider);
   final service = ref.watch(sensorServiceProvider);
-  return service.getSensorHistory(blockId, hours: hours);
+  return service.getSensorHistory(rowId, hours: hours);
 });
 
 /// Available sensor blocks

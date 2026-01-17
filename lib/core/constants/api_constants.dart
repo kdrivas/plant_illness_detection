@@ -2,35 +2,91 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// API Configuration Constants
 class ApiConstants {
-  // Base URLs (placeholder - configure in .env)
+  // Base URL for plant-gardener-agent backend
+  // For Android emulator, use 10.0.2.2 to access localhost
+  // For iOS simulator, use localhost or 127.0.0.1
+  // For real device on same network, use your computer's IP address
   static String get baseUrl => 
-      dotenv.env['API_BASE_URL'] ?? 'https://api.yourserver.com';
+      dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:8000';
   
-  // Sensor Endpoints
-  static String get sensorsEndpoint => '$baseUrl/api/sensors';
-  static String sensorDataEndpoint(String blockId) => '$sensorsEndpoint/$blockId';
-  static String sensorHistoryEndpoint(String blockId, int hours) => 
-      '$sensorsEndpoint/$blockId/history?hours=$hours';
-  static String get availableBlocksEndpoint => '$sensorsEndpoint/blocks';
+  // ============================================================================
+  // Dashboard Endpoints (New Row-based Architecture)
+  // ============================================================================
   
-  // Alert Endpoints
+  // Get dashboard overview with all rows: GET /dashboard/overview
+  static String get overviewEndpoint => '$baseUrl/dashboard/overview';
+  
+  // Get all plant rows: GET /dashboard/rows
+  static String get rowsEndpoint => '$baseUrl/dashboard/rows';
+  
+  // Get single row detail: GET /dashboard/rows/{row_id}
+  static String rowDetailEndpoint(String rowId) => '$baseUrl/dashboard/rows/$rowId';
+  
+  // Get row history for charts: GET /dashboard/rows/{row_id}/history?hours=24
+  static String rowHistoryEndpoint(String rowId, {int hours = 24}) => 
+      '$baseUrl/dashboard/rows/$rowId/history?hours=$hours';
+  
+  // Get daily stats for a row: GET /dashboard/rows/{row_id}/stats?days=7
+  static String rowStatsEndpoint(String rowId, {int days = 7}) => 
+      '$baseUrl/dashboard/rows/$rowId/stats?days=$days';
+  
+  // Trigger manual pump: POST /dashboard/pump
+  static String get pumpEndpoint => '$baseUrl/dashboard/pump';
+  
+  // Get water tanks: GET /dashboard/tanks
+  static String get tanksEndpoint => '$baseUrl/dashboard/tanks';
+  
+  // Get ambient zones: GET /dashboard/ambient
+  static String get ambientEndpoint => '$baseUrl/dashboard/ambient';
+  
+  // Get system configuration: GET /dashboard/config
+  static String get configEndpoint => '$baseUrl/dashboard/config';
+  
+  // ============================================================================
+  // Prediction Endpoints
+  // ============================================================================
+  
+  // POST /predict - Send sensor data, get watering actions
+  static String get predictEndpoint => '$baseUrl/predict';
+  
+  // ============================================================================
+  // Health Endpoints
+  // ============================================================================
+  
+  // GET /health
+  static String get healthEndpoint => '$baseUrl/health';
+  
+  // ============================================================================
+  // Legacy/Fallback Endpoints (kept for compatibility)
+  // ============================================================================
+  // Legacy Compatibility (mapped to new endpoints)
+  // ============================================================================
+  
+  // Sensor Endpoints (mapped to rows)
+  static String get sensorsEndpoint => overviewEndpoint;
+  static String sensorDataEndpoint(String rowId) => rowStatsEndpoint(rowId);
+  static String sensorHistoryEndpoint(String rowId, int hours) => 
+      rowHistoryEndpoint(rowId, hours: hours);
+  static String get availableBlocksEndpoint => rowsEndpoint;
+  
+  // Alert Endpoints (TODO: implement in backend)
   static String get alertsEndpoint => '$baseUrl/api/alerts';
   static String blockAlertsEndpoint(String blockId) => '$alertsEndpoint/$blockId';
   static String get alertThresholdsEndpoint => '$alertsEndpoint/thresholds';
   
-  // Detection Endpoints
+  // Detection Endpoints (TODO: implement in backend)
   static String get detectionEndpoint => '$baseUrl/api/detection';
   static String get analyzeImageEndpoint => '$detectionEndpoint/analyze';
   
-  // Chat/LLM Endpoints
+  // Chat/LLM Endpoints (TODO: implement in backend)
   static String get chatEndpoint => '$baseUrl/api/chat';
   static String get geminiEndpoint => '$chatEndpoint/gemini';
   static String get openaiEndpoint => '$chatEndpoint/openai';
   
-  // Harvest Endpoints
-  static String get harvestEndpoint => '$baseUrl/api/harvest';
-  static String harvestStatusEndpoint(String blockId) => '$harvestEndpoint/$blockId';
-  static String get harvestPredictEndpoint => '$harvestEndpoint/predict';
+  // Harvest Endpoints (mapped to dashboard)
+  static String get harvestEndpoint => '$baseUrl/dashboard';
+  static String harvestStatusEndpoint(String rowId) => rowStatsEndpoint(rowId);
+  static String get harvestPredictEndpoint => predictEndpoint;
   
   // LLM Direct APIs (when not using proxy server)
   static const String geminiDirectUrl = 

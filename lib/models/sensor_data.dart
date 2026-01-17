@@ -14,7 +14,7 @@ class BlockSensorData {
 
   BlockSensorData({
     required this.blockId,
-    this.rowId = 'Row-1',
+    this.rowId = 'row_1',
     required this.phLevel,
     required this.ecLevel,
     required this.waterTemp,
@@ -30,7 +30,7 @@ class BlockSensorData {
   factory BlockSensorData.fromJson(Map<String, dynamic> json) {
     return BlockSensorData(
       blockId: json['blockId'] ?? json['block_id'] ?? '',
-      rowId: json['rowId'] ?? json['row_id'] ?? 'Row-1',
+      rowId: json['rowId'] ?? json['row_id'] ?? 'row_1',
       phLevel: (json['phLevel'] ?? json['ph_level'] ?? 0).toDouble(),
       ecLevel: (json['ecLevel'] ?? json['ec_level'] ?? 0).toDouble(),
       waterTemp: (json['waterTemp'] ?? json['water_temp'] ?? 0).toDouble(),

@@ -73,11 +73,14 @@ class AppColors {
   
   // Chart line colors for specific sensors
   static const Color chartPh = Color(0xFF7E57C2);
+  static const Color chartPH = chartPh; // Alias for consistent naming
   static const Color chartEc = Color(0xFFFFB300);
+  static const Color chartEC = chartEc; // Alias for consistent naming
   static const Color chartWaterTemp = Color(0xFF29B6F6);
   static const Color chartHumidity = Color(0xFF26A69A);
   static const Color chartWeatherTemp = Color(0xFFFF7043);
   static const Color chartUv = Color(0xFFFFEE58);
+  static const Color chartUV = chartUv; // Alias for consistent naming
   static const Color chartVoc = Color(0xFF78909C);
   static const Color chartMoisture = Color(0xFF66BB6A);
   static const Color chartWaterSupplied = Color(0xFF42A5F5);

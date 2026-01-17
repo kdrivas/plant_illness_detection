@@ -48,67 +48,145 @@ class SensorService {
     }
   }
 
-  /// Get current sensor data for a block
-  Future<BlockSensorData?> getSensorData(String blockId) async {
+  /// Get dashboard overview data
+  Future<Map<String, dynamic>> getDashboardOverview() async {
     try {
       final response = await _client.get(
-        Uri.parse(ApiConstants.sensorDataEndpoint(blockId)),
+        Uri.parse(ApiConstants.overviewEndpoint),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return BlockSensorData.fromJson(data);
+        return json.decode(response.body) as Map<String, dynamic>;
       }
-      return _getMockSensorData(blockId);
+      return {'rows': []};
     } catch (e) {
-      // Return mock data for demo purposes
-      return _getMockSensorData(blockId);
+      print('Error fetching dashboard overview: $e');
+      return {'rows': []};
     }
   }
 
-  /// Get sensor history for charts (1h, 6h, or 24h)
+  /// Get current sensor data for a row from /dashboard/overview endpoint
+  Future<BlockSensorData?> getSensorData(String rowId) async {
+    try {
+      final response = await _client.get(
+        Uri.parse(ApiConstants.overviewEndpoint),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> overview = json.decode(response.body);
+        final List<dynamic> rows = overview['rows'] ?? [];
+        // Find the row matching our rowId
+        final rowData = rows.firstWhere(
+          (r) => r['rowId'] == rowId || r['row_id'] == rowId,
+          orElse: () => rows.isNotEmpty ? rows.first : null,
+        );
+        if (rowData != null) {
+          return BlockSensorData.fromJson(_mapRowToSensorData(rowData));
+        }
+      }
+      return _getMockSensorData(rowId);
+    } catch (e) {
+      print('Error fetching sensor data: $e');
+      // Return mock data for demo purposes
+      return _getMockSensorData(rowId);
+    }
+  }
+  
+  /// Map RowOverview response to BlockSensorData format
+  Map<String, dynamic> _mapRowToSensorData(Map<String, dynamic> row) {
+    return {
+      'blockId': row['rowId'] ?? row['row_id'],
+      'rowId': row['rowId'] ?? row['row_id'],
+      'phLevel': row['phLevel'] ?? row['ph_level'] ?? 0.0,
+      'ecLevel': row['ecLevel'] ?? row['ec_level'] ?? 0.0,
+      'waterTemp': row['waterTemp'] ?? row['water_temp'] ?? 0.0,
+      'vocIndex': row['vocIndex'] ?? row['voc_index'] ?? 0,
+      'weatherTemp': row['weatherTemp'] ?? row['weather_temp'] ?? 0.0,
+      'humidity': row['humidity'] ?? 0.0,
+      'uvIndex': row['uvIndex'] ?? row['uv_index'] ?? 0.0,
+      'moisture': row['soilMoisture'] ?? row['soil_moisture'] ?? 0.0,
+      'waterSupplied': 0.0,
+      'timestamp': row['moistureTimestamp'] ?? row['moisture_timestamp'] ?? DateTime.now().toIso8601String(),
+    };
+  }
+
+  /// Get sensor history for charts from /dashboard/rows/{row_id}/history
   Future<List<BlockSensorData>> getSensorHistory(
-    String blockId, {
+    String rowId, {
     int hours = 24,
+    String? unusedRowId,
   }) async {
     try {
       final response = await _client.get(
-        Uri.parse(ApiConstants.sensorHistoryEndpoint(blockId, hours)),
+        Uri.parse(ApiConstants.rowHistoryEndpoint(rowId, hours: hours)),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((item) => BlockSensorData.fromJson(item)).toList();
+        final Map<String, dynamic> data = json.decode(response.body);
+        return _mapHistoryResponse(rowId, data);
       }
-      return _getMockSensorHistory(blockId, hours);
+      return _getMockSensorHistory(rowId, hours);
     } catch (e) {
+      print('Error fetching sensor history: $e');
       // Return mock history for demo
-      return _getMockSensorHistory(blockId, hours);
+      return _getMockSensorHistory(rowId, hours);
     }
   }
+  
+  /// Convert RowHistoryResponse to list of BlockSensorData
+  List<BlockSensorData> _mapHistoryResponse(String rowId, Map<String, dynamic> history) {
+    final List<BlockSensorData> result = [];
+    final moisture = history['moisture'] as List<dynamic>? ?? [];
+    final uvIndex = history['uv_index'] as List<dynamic>? ?? [];
+    final weatherTemp = history['weather_temp'] as List<dynamic>? ?? [];
+    final humidity = history['humidity'] as List<dynamic>? ?? [];
+    final phLevel = history['ph_level'] as List<dynamic>? ?? [];
+    final ecLevel = history['ec_level'] as List<dynamic>? ?? [];
+    final waterTemp = history['water_temp'] as List<dynamic>? ?? [];
+    
+    // Use moisture timestamps as base (most reliable)
+    for (int i = 0; i < moisture.length; i++) {
+      final point = moisture[i];
+      result.add(BlockSensorData(
+        blockId: rowId,
+        phLevel: i < phLevel.length ? (phLevel[i]['value'] ?? 0.0).toDouble() : 0.0,
+        ecLevel: i < ecLevel.length ? (ecLevel[i]['value'] ?? 0.0).toDouble() : 0.0,
+        waterTemp: i < waterTemp.length ? (waterTemp[i]['value'] ?? 0.0).toDouble() : 0.0,
+        vocIndex: 0,
+        weatherTemp: i < weatherTemp.length ? (weatherTemp[i]['value'] ?? 0.0).toDouble() : 0.0,
+        humidity: i < humidity.length ? (humidity[i]['value'] ?? 0.0).toDouble() : 0.0,
+        uvIndex: i < uvIndex.length ? (uvIndex[i]['value'] ?? 0.0).toDouble() : 0.0,
+        timestamp: point['timestamp'] ?? DateTime.now().toIso8601String(),
+      ));
+    }
+    return result;
+  }
 
-  /// Get list of available sensor blocks
+  /// Get list of available plant rows from /dashboard/overview
   Future<List<String>> getAvailableBlocks() async {
     try {
       final response = await _client.get(
-        Uri.parse(ApiConstants.availableBlocksEndpoint),
+        Uri.parse(ApiConstants.overviewEndpoint),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.cast<String>();
+        final Map<String, dynamic> overview = json.decode(response.body);
+        final List<dynamic> rows = overview['rows'] ?? [];
+        return rows.map((r) => (r['rowId'] ?? r['row_id'] ?? 'Unknown') as String).toList();
       }
       return _getMockBlocks();
     } catch (e) {
+      print('Error fetching rows: $e');
       return _getMockBlocks();
     }
   }
 
   List<String> _getMockBlocks() {
-    return ['Block-A', 'Block-B', 'Block-C'];
+    return ['row_1', 'row_2', 'row_3'];
   }
 
   // Mock data for demo/development

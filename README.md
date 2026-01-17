@@ -28,22 +28,26 @@ A cross-platform Flutter mobile application for plant illness detection, sensor 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    cd plant_illness_detection
    ```
 
 2. **Generate platform files**
+
    ```bash
    flutter create .
    ```
 
 3. **Configure environment**
+
    ```bash
    cp .env.example .env
    # Edit .env with your API keys
    ```
 
 4. **Install dependencies**
+
    ```bash
    flutter pub get
    ```
@@ -76,6 +80,7 @@ Edit `android/app/src/main/AndroidManifest.xml` and add these permissions inside
 ```
 
 Also add these queries inside `<manifest>`:
+
 ```xml
 <queries>
     <intent>
@@ -164,12 +169,14 @@ lib/
 ## API Integration
 
 ### Sensor Data Endpoint
+
 ```
 GET /api/sensors/{block_id}
 GET /api/sensors/{block_id}/history?hours={1|6|24}
 ```
 
 ### Disease Detection Endpoint
+
 ```
 POST /api/detection/analyze
 Body: multipart/form-data
@@ -178,6 +185,7 @@ Body: multipart/form-data
 ```
 
 ### Alert Evaluation Endpoint
+
 ```
 POST /api/alerts/evaluate
 Body: JSON (BlockSensorData)

@@ -168,7 +168,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen>
                       : null,
                   onTap: () {
                     ref.read(selectedPlantProvider.notifier).state = plant;
-                    ref.read(selectedRowProvider.notifier).state = 'Row-1';
+                    ref.read(selectedRowProvider.notifier).state = 'row_1';
                     Navigator.pop(context);
                   },
                 )),
@@ -273,7 +273,7 @@ class _OverviewTab extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.85,
+          childAspectRatio: 1.0,
           children: [
             SensorGaugeCard(
               title: 'EC Level',
@@ -389,7 +389,7 @@ class _OverviewTab extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.85,
+          childAspectRatio: 1.0,
           children: [
             SensorGaugeCard(
               title: 'EC Level',
@@ -720,6 +720,15 @@ class _RowSelectorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ensure selectedRow is in the list, otherwise use first available
+    final validatedRow = rows.contains(selectedRow) 
+        ? selectedRow 
+        : (rows.isNotEmpty ? rows.first : null);
+    
+    if (validatedRow == null || rows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -770,7 +779,7 @@ class _RowSelectorCard extends StatelessWidget {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: selectedRow,
+                value: validatedRow,
                 isDense: true,
                 icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryGreen),
                 style: const TextStyle(

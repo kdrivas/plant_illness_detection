@@ -33,7 +33,7 @@ class SensorGaugeCard extends StatelessWidget {
     final status = showNoData ? _GaugeStatus.noData : _getStatus();
     
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.backgroundCard,
         borderRadius: BorderRadius.circular(16),
@@ -60,16 +60,17 @@ class SensorGaugeCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               _StatusBadge(status: status),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           
           // Gauge
-          SizedBox(
-            height: 80,
+          Expanded(
             child: Center(
               child: _GaugePainter(
                 value: showNoData ? 0 : value,
@@ -82,7 +83,7 @@ class SensorGaugeCard extends StatelessWidget {
               ),
             ),
           ),
-          
+          const SizedBox(height: 8),
           // Value display
           Center(
             child: showNoData 

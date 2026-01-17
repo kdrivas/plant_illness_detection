@@ -38,7 +38,9 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen>
   @override
   Widget build(BuildContext context) {
     final selectedBlock = ref.watch(selectedBlockProvider);
+    final selectedRow = ref.watch(selectedRowProvider);
     final selectedPlant = ref.watch(selectedPlantProvider);
+    final availableRows = ref.watch(availableRowsProvider);
     final sensorDataAsync = ref.watch(sensorDataStreamProvider(selectedBlock));
     final alerts = ref.watch(activeAlertsProvider);
 
@@ -46,7 +48,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen>
       backgroundColor: AppColors.backgroundLight,
       body: Column(
         children: [
-          // Fixed Header with Plant Selector only (no row picker)
+          // Fixed Header
           Container(
             decoration: const BoxDecoration(
               gradient: AppColors.primaryGradient,
@@ -104,15 +106,17 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                // Overview Tab - Current sensor values (EC, pH, temps, humidity, UV)
+                // Overview Tab
                 _OverviewTab(
                   sensorDataAsync: sensorDataAsync,
                   alerts: alerts,
+                  selectedRow: selectedRow,
                 ),
 
-                // Charts Tab - Moisture and Water with Row picker
+                // Charts Tab
                 _ChartsTab(
                   selectedBlock: selectedBlock,
+                  selectedRow: selectedRow,
                   timeframe: _selectedTimeframe,
                   onTimeframeChanged: (tf) {
                     setState(() {
@@ -143,7 +147,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Select Plant Type',
+              'Select Plant',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -168,7 +172,7 @@ class _SensorsScreenState extends ConsumerState<SensorsScreen>
                       : null,
                   onTap: () {
                     ref.read(selectedPlantProvider.notifier).state = plant;
-                    ref.read(selectedRowProvider.notifier).state = 'Row-1';
+                    ref.read(selectedRowProvider.notifier).state = 'row_1';
                     Navigator.pop(context);
                   },
                 )),
@@ -232,13 +236,149 @@ class _PlantChip extends StatelessWidget {
   }
 }
 
+class _RowSelector extends StatelessWidget {
+  final String selectedRow;
+  final List<String> rows;
+  final ValueChanged<String> onChanged;
+
+  const _RowSelector({
+    required this.selectedRow,
+    required this.rows,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Ensure selectedRow is in the list, otherwise use first available
+    final validatedRow = rows.contains(selectedRow) 
+        ? selectedRow 
+        : (rows.isNotEmpty ? rows.first : null);
+    
+    if (validatedRow == null || rows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: validatedRow,
+          isExpanded: true,
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+          dropdownColor: AppColors.primaryGreen,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+          items: rows.map((row) {
+            return DropdownMenuItem(
+              value: row,
+              child: Text(row),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) onChanged(value);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _RowSelectorCard extends StatelessWidget {
+  final String selectedRow;
+  final List<String> rows;
+  final ValueChanged<String> onChanged;
+
+  const _RowSelectorCard({
+    required this.selectedRow,
+    required this.rows,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Ensure selectedRow is in the list, otherwise use first available
+    final validatedRow = rows.contains(selectedRow) 
+        ? selectedRow 
+        : (rows.isNotEmpty ? rows.first : null);
+    
+    if (validatedRow == null || rows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundCard,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.view_column_outlined,
+            color: AppColors.primaryGreen,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Row:',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: validatedRow,
+                  isExpanded: true,
+                  icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryGreen),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  items: rows.map((row) {
+                    return DropdownMenuItem(
+                      value: row,
+                      child: Text(row),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) onChanged(value);
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _OverviewTab extends StatelessWidget {
   final AsyncValue<BlockSensorData> sensorDataAsync;
   final List alerts;
+  final String selectedRow;
 
   const _OverviewTab({
     required this.sensorDataAsync,
     required this.alerts,
+    required this.selectedRow,
   });
 
   @override
@@ -254,26 +394,78 @@ class _OverviewTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Connection status
-        _ConnectionStatusCard(
-          isConnected: false,
-          isLoading: isLoading,
+        // Not Connected status
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.textSecondary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.textSecondary.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.wifi_off,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isLoading ? 'Connecting...' : 'Data Not Connected',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    Text(
+                      isLoading 
+                          ? 'Establishing connection to sensors...'
+                          : 'Connect your sensors to view real-time data',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary.withOpacity(0.8),
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isLoading)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: AppColors.textSecondary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            ],
+          ),
         ).animate().fadeIn(delay: 100.ms),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
-        // Current Values Section Header
+        // Current Values Section
         const SectionHeader(title: '📊 Current Values'),
         const SizedBox(height: 12),
 
-        // Grid of 6 gauges - all showing no data
+        // Grid of gauges - all showing no data
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.78,
+          childAspectRatio: 0.75,
           children: [
             SensorGaugeCard(
               title: 'EC Level',
@@ -283,7 +475,7 @@ class _OverviewTab extends StatelessWidget {
               maxValue: 5,
               optimalMin: 1.2,
               optimalMax: 2.5,
-              color: AppColors.chartEc.withOpacity(0.3),
+              color: AppColors.chartEC.withOpacity(0.3),
               icon: Icons.electric_bolt,
               showNoData: true,
             ),
@@ -295,7 +487,7 @@ class _OverviewTab extends StatelessWidget {
               maxValue: 14,
               optimalMin: 5.5,
               optimalMax: 7.0,
-              color: AppColors.chartPh.withOpacity(0.3),
+              color: AppColors.chartPH.withOpacity(0.3),
               icon: Icons.science,
               showNoData: true,
             ),
@@ -343,7 +535,7 @@ class _OverviewTab extends StatelessWidget {
               maxValue: 11,
               optimalMin: 3,
               optimalMax: 6,
-              color: AppColors.chartUv.withOpacity(0.3),
+              color: AppColors.chartUV.withOpacity(0.3),
               icon: Icons.wb_twilight,
               showNoData: true,
             ),
@@ -360,8 +552,8 @@ class _OverviewTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         // Connection status
-        _ConnectionStatusCard(
-          isConnected: true,
+        _ConnectionStatus(
+          rowId: selectedRow,
           timestamp: data.timestamp,
         ).animate().fadeIn(delay: 100.ms),
 
@@ -382,14 +574,14 @@ class _OverviewTab extends StatelessWidget {
         const SectionHeader(title: '📊 Current Values'),
         const SizedBox(height: 12),
 
-        // Grid of 6 gauges with real data
+        // Grid of gauges with real data
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.78,
+          childAspectRatio: 0.75,
           children: [
             SensorGaugeCard(
               title: 'EC Level',
@@ -399,9 +591,9 @@ class _OverviewTab extends StatelessWidget {
               maxValue: 5,
               optimalMin: 1.2,
               optimalMax: 2.5,
-              color: AppColors.chartEc,
+              color: AppColors.chartEC,
               icon: Icons.electric_bolt,
-            ).animate().fadeIn(delay: 150.ms),
+            ),
             SensorGaugeCard(
               title: 'pH Level',
               value: data.phLevel,
@@ -410,9 +602,9 @@ class _OverviewTab extends StatelessWidget {
               maxValue: 14,
               optimalMin: 5.5,
               optimalMax: 7.0,
-              color: AppColors.chartPh,
+              color: AppColors.chartPH,
               icon: Icons.science,
-            ).animate().fadeIn(delay: 200.ms),
+            ),
             SensorGaugeCard(
               title: 'Water Temp',
               value: data.waterTemp,
@@ -423,7 +615,7 @@ class _OverviewTab extends StatelessWidget {
               optimalMax: 24,
               color: AppColors.chartWaterTemp,
               icon: Icons.thermostat,
-            ).animate().fadeIn(delay: 250.ms),
+            ),
             SensorGaugeCard(
               title: 'Weather Temp',
               value: data.weatherTemp,
@@ -434,7 +626,7 @@ class _OverviewTab extends StatelessWidget {
               optimalMax: 30,
               color: AppColors.chartWeatherTemp,
               icon: Icons.wb_sunny,
-            ).animate().fadeIn(delay: 300.ms),
+            ),
             SensorGaugeCard(
               title: 'Humidity',
               value: data.humidity,
@@ -445,7 +637,7 @@ class _OverviewTab extends StatelessWidget {
               optimalMax: 70,
               color: AppColors.chartHumidity,
               icon: Icons.water_drop,
-            ).animate().fadeIn(delay: 350.ms),
+            ),
             SensorGaugeCard(
               title: 'UV Index',
               value: data.uvIndex,
@@ -454,9 +646,9 @@ class _OverviewTab extends StatelessWidget {
               maxValue: 11,
               optimalMin: 3,
               optimalMax: 6,
-              color: AppColors.chartUv,
+              color: AppColors.chartUV,
               icon: Icons.wb_twilight,
-            ).animate().fadeIn(delay: 400.ms),
+            ),
           ],
         ),
 
@@ -466,157 +658,43 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-class _ConnectionStatusCard extends StatelessWidget {
-  final bool isConnected;
-  final bool isLoading;
-  final String? timestamp;
-
-  const _ConnectionStatusCard({
-    required this.isConnected,
-    this.isLoading = false,
-    this.timestamp,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final DateTime? parsedTime = timestamp != null ? DateTime.tryParse(timestamp!) : null;
-    final Duration? timeDiff = parsedTime != null ? DateTime.now().difference(parsedTime) : null;
-    final bool isRecent = timeDiff != null && timeDiff.inMinutes < 5;
-
-    final Color statusColor = isLoading
-        ? AppColors.info
-        : isConnected && isRecent
-            ? AppColors.success
-            : isConnected
-                ? AppColors.warningAmber
-                : AppColors.textSecondary;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: statusColor.withOpacity(0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isLoading
-                ? Icons.sync
-                : isConnected
-                    ? Icons.wifi
-                    : Icons.wifi_off,
-            color: statusColor,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isLoading
-                      ? 'Connecting...'
-                      : isConnected
-                          ? (isRecent ? 'Connected' : 'Connection Delayed')
-                          : 'Data Not Connected',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                Text(
-                  isLoading
-                      ? 'Establishing connection to sensors...'
-                      : isConnected && timeDiff != null
-                          ? 'Updated ${_formatTimeDiff(timeDiff)}'
-                          : 'Connect your sensors to view real-time data',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          if (isLoading)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: statusColor,
-                shape: BoxShape.circle,
-                boxShadow: isConnected
-                    ? [
-                        BoxShadow(
-                          color: statusColor.withOpacity(0.5),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ]
-                    : null,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  String _formatTimeDiff(Duration diff) {
-    if (diff.inSeconds < 60) {
-      return 'just now';
-    } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m ago';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
-    } else {
-      return '${diff.inDays}d ago';
-    }
-  }
-}
-
 class _ChartsTab extends ConsumerWidget {
   final String selectedBlock;
+  final String selectedRow;
   final ChartTimeframe timeframe;
   final ValueChanged<ChartTimeframe> onTimeframeChanged;
 
   const _ChartsTab({
     required this.selectedBlock,
+    required this.selectedRow,
     required this.timeframe,
     required this.onTimeframeChanged,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedRow = ref.watch(selectedRowProvider);
-    final availableRows = ref.watch(availableRowsProvider);
     final historyAsync = ref.watch(sensorHistoryProvider(timeframe.hours));
+    final availableRows = ref.watch(availableRowsProvider);
 
     return historyAsync.when(
       loading: () => const Center(child: LoadingIndicator()),
-      error: (e, _) => _buildEmptyChartsView(context, ref, selectedRow, availableRows),
+      error: (e, _) => _buildEmptyChartsView(context, ref, availableRows),
       data: (historyData) {
         if (historyData.isEmpty) {
-          return _buildEmptyChartsView(context, ref, selectedRow, availableRows);
+          return _buildEmptyChartsView(context, ref, availableRows);
         }
 
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Row selector at the top of charts tab
+            // Row selector at the top
             _RowSelectorCard(
               selectedRow: selectedRow,
               rows: availableRows,
               onChanged: (row) {
                 ref.read(selectedRowProvider.notifier).state = row;
               },
-            ).animate().fadeIn(delay: 100.ms),
+            ),
 
             const SizedBox(height: 16),
 
@@ -624,15 +702,15 @@ class _ChartsTab extends ConsumerWidget {
             TimeframeChips(
               selected: timeframe,
               onChanged: onTimeframeChanged,
-            ).animate().fadeIn(delay: 150.ms),
+            ).animate().fadeIn(delay: 100.ms),
 
             const SizedBox(height: 20),
 
-            // AI Insights Card
+            // AI Insights Card (Recommendations based on historical data)
             _InsightsCard(
               historyData: historyData,
               selectedRow: selectedRow,
-            ).animate().fadeIn(delay: 200.ms),
+            ).animate().fadeIn(delay: 150.ms),
 
             const SizedBox(height: 20),
 
@@ -643,7 +721,7 @@ class _ChartsTab extends ConsumerWidget {
               metric: SensorMetric.moisture,
               data: historyData,
               timeframe: timeframe,
-            ).animate().fadeIn(delay: 250.ms),
+            ).animate().fadeIn(delay: 200.ms),
 
             // Water Supplied Chart
             _ChartSection(
@@ -662,11 +740,11 @@ class _ChartsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyChartsView(BuildContext context, WidgetRef ref, String selectedRow, List<String> availableRows) {
+  Widget _buildEmptyChartsView(BuildContext context, WidgetRef ref, List<String> availableRows) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Row selector
+        // Row selector at the top
         _RowSelectorCard(
           selectedRow: selectedRow,
           rows: availableRows,
@@ -703,95 +781,6 @@ class _ChartsTab extends ConsumerWidget {
 
         const SizedBox(height: 100),
       ],
-    );
-  }
-}
-
-class _RowSelectorCard extends StatelessWidget {
-  final String selectedRow;
-  final List<String> rows;
-  final ValueChanged<String> onChanged;
-
-  const _RowSelectorCard({
-    required this.selectedRow,
-    required this.rows,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundCard,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.primaryGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.table_rows,
-              color: AppColors.primaryGreen,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Select Row',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                Text(
-                  'View moisture data for a specific row',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.primaryGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: selectedRow,
-                isDense: true,
-                icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryGreen),
-                style: const TextStyle(
-                  color: AppColors.primaryGreen,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-                items: rows.map((row) {
-                  return DropdownMenuItem(
-                    value: row,
-                    child: Text(row),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) onChanged(value);
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -962,6 +951,98 @@ class _Insight {
     required this.message,
     required this.color,
   });
+}
+
+class _ConnectionStatus extends StatelessWidget {
+  final String rowId;
+  final String timestamp;
+
+  const _ConnectionStatus({
+    required this.rowId,
+    required this.timestamp,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final parsedTime = DateTime.tryParse(timestamp) ?? DateTime.now();
+    final timeDiff = DateTime.now().difference(parsedTime);
+    final isRecent = timeDiff.inMinutes < 5;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isRecent
+            ? AppColors.success.withOpacity(0.1)
+            : AppColors.warningAmber.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isRecent
+              ? AppColors.success.withOpacity(0.3)
+              : AppColors.warningAmber.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isRecent ? Icons.wifi : Icons.wifi_off,
+            color: isRecent ? AppColors.success : AppColors.warningAmber,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isRecent ? 'Connected' : 'Connection Delayed',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: isRecent
+                            ? AppColors.success
+                            : AppColors.warningAmber,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                Text(
+                  '$rowId • Updated ${_formatTimeDiff(timeDiff)}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: isRecent ? AppColors.success : AppColors.warningAmber,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: isRecent
+                      ? AppColors.success.withOpacity(0.5)
+                      : AppColors.warningAmber.withOpacity(0.5),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTimeDiff(Duration diff) {
+    if (diff.inSeconds < 60) {
+      return 'just now';
+    } else if (diff.inMinutes < 60) {
+      return '${diff.inMinutes}m ago';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours}h ago';
+    } else {
+      return '${diff.inDays}d ago';
+    }
+  }
 }
 
 class _ChartSection extends StatelessWidget {
